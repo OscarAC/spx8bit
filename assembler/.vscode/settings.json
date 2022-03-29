@@ -1,0 +1,9 @@
+{
+    "configurations": [
+        {
+            "name": "spx",
+            "cStandard": "c11",
+            "cppStandard": "gnu++20",
+        }
+    ]
+}
