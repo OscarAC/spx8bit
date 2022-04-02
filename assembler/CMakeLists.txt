@@ -46,7 +46,10 @@ endif()
                         Assembler
 ==========================================================#]==]
 
-add_executable(spx  src/main.cpp src/spx.cpp)
+add_executable(spx  src/main.cpp
+                    src/spx.cpp
+                    src/parse.cpp
+                    src/architecture.cpp)
 target_include_directories(spx PUBLIC include)
 target_compile_options(spx PUBLIC -Wall)
 
