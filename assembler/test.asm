@@ -9,6 +9,7 @@ main: ; comment
     and r0 r1
     or  r0 r1
     cmp r0 r1
-    
+    nop
     jmp 2
     jmp main
+    hlt    
