@@ -5,13 +5,13 @@ using namespace spx;
 Token Lexer::next()
 {
     Token token = lexer::find_next(view, pos);
-    if (token.type == Invalid) [[unlikely]]
+    if (token.type == Invalid || token.type == Npos) [[unlikely]]
     {
         pos = View::npos;
     }
     else
     {
-        pos = token.column + token.value.size();
+        pos = token.position.second + 1;
     }
 
     return token;
@@ -22,22 +22,31 @@ Token Lexer::peek()
     return lexer::find_next(view, pos);
 }
 
-Token lexer::create_token(TokenType type, View value, size_t col)
+Token lexer::create_token(TokenType type, View value, Position position)
 {
     Token token;
-    token.column = col;
     token.value = value;
     token.type = type;
+    token.position = position;
     return token;
 }
 
-Token lexer::create_operator_token(OperatorType type, View value, size_t col)
+Token lexer::create_token(TokenType type, uint64_t value, Position position)
 {
     Token token;
-    token.column = col;
+    token.value = value;
+    token.type = type;
+    token.position = position;
+    return token;
+}
+
+Token lexer::create_operator_token(OperatorType type, View value, Position position)
+{
+    Token token;
     token.value = value;
     token.type = Operator;
     token.oper = type;
+    token.position = position;
     return token;
 }
 
@@ -59,7 +68,7 @@ Token lexer::find_with_validator(TokenType type, size_t pos, View view, bool (*v
         }
     }
 
-    return create_token(valid ? type : Invalid, view.substr(0, end), pos);
+    return create_token(valid ? type : Invalid, view.substr(0, end), {pos, end});
 }
 
 Token lexer::find_next(View view, size_t pos)
@@ -67,29 +76,84 @@ Token lexer::find_next(View view, size_t pos)
     pos = skip_spaces(view, pos);
     const char c = view[pos];
 
+    // Newline
+    if (is_newline(c)) [[unlikely]]
+    {
+        return create_token(NewLine, view.substr(pos, 1), {pos, pos});
+    }
+
+    // Directive
+    if (is_directive_first_char(c) && is_identifier_first_char(view[pos + 1])) [[unlikely]]
+    {
+        size_t end = find_next_separator(view, pos);
+        return create_token(Directive, view.substr(pos, end - pos), {pos, end - 1});
+    }
+
+    // String Literals
+    else if (is_literal(c)) [[unlikely]]
+    {
+        pos++;
+        size_t end = find_next(view, pos, '\"');
+        return create_token(Literal, view.substr(pos, end - pos), {pos, end});
+    }
+
     // Numbers
-    if (is_digit(c)) [[unlikely]]
+    else if (is_digit(c)) [[unlikely]]
     {
         bool ishex = c == '0' && is_hex_indicator(view[pos + 1]);
+        bool isbin = c == '0' && is_binary_indicator(view[pos + 1]);
+        int base = 10;
+        size_t end;
+        size_t tpos = pos;
         if (ishex)
         {
+            base = 16;
             pos += 2;
-        }        
-        size_t end = pos + 1;
-        for (; end < view.size(); end++)
-        {            
-            const char rc = view[end];
-            if(!(ishex ? is_hexdigit(rc) : is_digit(rc)))
-            {
-                break;
-            }            
+        }
+        else if (isbin)
+        {
+            base = 2;
+            pos += 2;
         }
 
-        return create_token(Integer, view.substr(pos, end - pos), pos);        
+        end = pos + 1;
+        for (; end < view.size(); end++)
+        {
+            const char rc = view[end];
+            if (!(ishex ? is_hexdigit(rc) : is_digit(rc)))
+            {
+                break;
+            }
+        }
+
+        View sv = view.substr(pos, end - pos);
+        auto dv = parse_int(sv, base);
+        if (dv.has_value())
+        {
+            return create_token(Integer, dv.value(), {tpos, end - 1});
+        }
+        else
+        {
+            return create_token(Invalid, sv, {tpos, end - 1});
+        }
+    }
+
+    // Comment
+    else if (is_comment(c)) [[unlikely]]
+    {
+        size_t end = pos + 1;
+        for (; end < view.size(); end++)
+        {
+            if (is_newline(view[end]))
+            {
+                break;
+            }
+        }
+        return create_token(Comment, view.substr(pos, end - pos), {pos, end - 1});
     }
 
     // Identifiers
-    if (is_identifier_char(c)) [[likely]]
+    else if (is_identifier_char(c)) [[likely]]
     {
 
         bool valid = true;
@@ -107,32 +171,22 @@ Token lexer::find_next(View view, size_t pos)
                 break;
             }
         }
-        
-        return create_token(valid ? Identifier : Invalid, view.substr(pos, end - pos), pos);
-    }
 
-    // Comment
-    if (is_comment(c))
-    {
-        size_t end = pos + 1;
-        for (; end < view.size(); end++)
-        {
-            if (is_newline(view[end]))
-            {
-                break;
-            }
-        }
-        return create_token(Comment, view.substr(pos, end - pos), pos);
+        return create_token(valid ? Identifier : Invalid, view.substr(pos, end - pos), {pos, end - 1});
     }
 
     // Operators
     switch (c)
     {
     case '[':
-        return create_operator_token(LBracket, view.substr(pos, 1), pos);
+        return create_operator_token(LBracket, view.substr(pos, 1), {pos, pos});
     case ']':
-        return create_operator_token(RBracket, view.substr(pos, 1), pos);
+        return create_operator_token(RBracket, view.substr(pos, 1), {pos, pos});
+    case '+':
+        return create_operator_token(Plus, view.substr(pos, 1), {pos, pos});
+    case '-':
+        return create_operator_token(Minus, view.substr(pos, 1), {pos, pos});
     }
 
-    return create_token(Npos, {}, View::npos);
+    return create_token(Npos, {}, {pos, View::npos});
 }

@@ -14,7 +14,7 @@ namespace spx
     using String = std::string;
     using View = std::string_view;
     using File = std::ifstream;
-    using Segment = std::pair<size_t,size_t>;
+    using Position = std::pair<size_t,size_t>;
 
     template <class T>
     struct Object

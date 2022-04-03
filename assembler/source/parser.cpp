@@ -21,22 +21,38 @@ void Parser::parse(View source)
         switch (token.type)
         {
         case Identifier:
-            std::cout << "Identifier: " << token.value << std::endl;
+            std::cout << "Identifier: " << token.viewValue() << std::endl;
             break;
 
         case Integer:
-            std::cout << "Integer: " << token.value << std::endl;
+            std::cout << "Integer: " << token.intValue() << std::endl;
             break;
 
         case Comment:
-            std::cout << "Comment: " << token.value << std::endl;
+            std::cout << "Comment: " << token.viewValue() << std::endl;
+            break;
+
+        case NewLine:
+            std::cout << "NewLine" << std::endl;
             break;
 
         case Operator:
-            std::cout << "Operator: " << token.value << std::endl;
+            std::cout << "Operator: " << token.viewValue() << std::endl;
+            break;
+
+        case Directive:
+            std::cout << "Directive: " << token.viewValue() << std::endl;
+            break;
+
+        case Literal:
+            std::cout << "Literal: " << token.viewValue() << std::endl;
+            break;
+
+        case Invalid:
+            std::cout << "Invalid: " << token.viewValue() << std::endl;
 
         default:
             break;
-        }    
+        }
     }
 }
