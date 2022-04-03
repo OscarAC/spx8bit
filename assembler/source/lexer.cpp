@@ -4,8 +4,8 @@ using namespace spx;
 
 Token Lexer::next()
 {
-    Token token = lexer::find_next(view, pos);
-    if (token.type == Invalid || token.type == Npos) [[unlikely]]
+    Token token = lex::find_next(view, pos);
+    if (token.type == TokenType::Invalid || token.type == TokenType::Npos) [[unlikely]]
     {
         pos = View::npos;
     }
@@ -19,10 +19,10 @@ Token Lexer::next()
 
 Token Lexer::peek()
 {
-    return lexer::find_next(view, pos);
+    return lex::find_next(view, pos);
 }
 
-Token lexer::create_token(TokenType type, View value, Position position)
+Token lex::create_token(TokenType type, View value, Position position)
 {
     Token token;
     token.value = value;
@@ -31,7 +31,7 @@ Token lexer::create_token(TokenType type, View value, Position position)
     return token;
 }
 
-Token lexer::create_token(TokenType type, uint64_t value, Position position)
+Token lex::create_token(TokenType type, uint64_t value, Position position)
 {
     Token token;
     token.value = value;
@@ -40,17 +40,17 @@ Token lexer::create_token(TokenType type, uint64_t value, Position position)
     return token;
 }
 
-Token lexer::create_operator_token(OperatorType type, View value, Position position)
+Token lex::create_operator_token(OperatorType type, View value, Position position)
 {
     Token token;
     token.value = value;
-    token.type = Operator;
+    token.type = TokenType::Operator;
     token.oper = type;
     token.position = position;
     return token;
 }
 
-Token lexer::find_with_validator(TokenType type, size_t pos, View view, bool (*validator)(const char))
+Token lex::find_with_validator(TokenType type, size_t pos, View view, bool (*validator)(const char))
 {
     bool valid = true;
     size_t end = 0;
@@ -68,10 +68,10 @@ Token lexer::find_with_validator(TokenType type, size_t pos, View view, bool (*v
         }
     }
 
-    return create_token(valid ? type : Invalid, view.substr(0, end), {pos, end});
+    return create_token(valid ? type : TokenType::Invalid, view.substr(0, end), {pos, end});
 }
 
-Token lexer::find_next(View view, size_t pos)
+Token lex::find_next(View view, size_t pos)
 {
     pos = skip_spaces(view, pos);
     const char c = view[pos];
@@ -79,14 +79,14 @@ Token lexer::find_next(View view, size_t pos)
     // Newline
     if (is_newline(c)) [[unlikely]]
     {
-        return create_token(NewLine, view.substr(pos, 1), {pos, pos});
+        return create_token(TokenType::NewLine, view.substr(pos, 1), {pos, pos});
     }
 
     // Directive
     if (is_directive_first_char(c) && is_identifier_first_char(view[pos + 1])) [[unlikely]]
     {
         size_t end = find_next_separator(view, pos);
-        return create_token(Directive, view.substr(pos, end - pos), {pos, end - 1});
+        return create_token(TokenType::Directive, view.substr(pos, end - pos), {pos, end - 1});
     }
 
     // String Literals
@@ -94,7 +94,7 @@ Token lexer::find_next(View view, size_t pos)
     {
         pos++;
         size_t end = find_next(view, pos, '\"');
-        return create_token(Literal, view.substr(pos, end - pos), {pos, end});
+        return create_token(TokenType::Literal, view.substr(pos, end - pos), {pos, end});
     }
 
     // Numbers
@@ -130,11 +130,11 @@ Token lexer::find_next(View view, size_t pos)
         auto dv = parse_int(sv, base);
         if (dv.has_value())
         {
-            return create_token(Integer, dv.value(), {tpos, end - 1});
+            return create_token(TokenType::Integer, dv.value(), {tpos, end - 1});
         }
         else
         {
-            return create_token(Invalid, sv, {tpos, end - 1});
+            return create_token(TokenType::Invalid, sv, {tpos, end - 1});
         }
     }
 
@@ -149,7 +149,7 @@ Token lexer::find_next(View view, size_t pos)
                 break;
             }
         }
-        return create_token(Comment, view.substr(pos, end - pos), {pos, end - 1});
+        return create_token(TokenType::Comment, view.substr(pos, end - pos), {pos, end - 1});
     }
 
     // Identifiers
@@ -172,7 +172,7 @@ Token lexer::find_next(View view, size_t pos)
             }
         }
 
-        return create_token(valid ? Identifier : Invalid, view.substr(pos, end - pos), {pos, end - 1});
+        return create_token(valid ? TokenType::Identifier : TokenType::Invalid, view.substr(pos, end - pos), {pos, end - 1});
     }
 
     // Operators
@@ -188,5 +188,5 @@ Token lexer::find_next(View view, size_t pos)
         return create_operator_token(Minus, view.substr(pos, 1), {pos, pos});
     }
 
-    return create_token(Npos, {}, {pos, View::npos});
+    return create_token(TokenType::Npos, {}, {pos, View::npos});
 }

@@ -8,7 +8,7 @@
 
 namespace spx
 {
-    enum TokenType
+    enum class TokenType
     {
         Invalid,
         Identifier,
@@ -42,12 +42,12 @@ namespace spx
             value = val;
         }
 
-        uint64_t intValue()
+        uint64_t as_int()
         {
             return std::get<uint64_t>(value);
         }
 
-        View viewValue()
+        View as_view()
         {
             return std::get<View>(value);
         }
@@ -82,7 +82,7 @@ namespace spx
         size_t pos;
     };
 
-    namespace lexer
+    namespace lex
     {
         Token find_next(View view, size_t pos);
         Token create_token(TokenType type, View value, Position position);
